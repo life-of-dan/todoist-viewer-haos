@@ -61,11 +61,9 @@ Depending on dashboard mode:
 
 **Storage mode (default):**
 
-Settings → Dashboards → (⋮) → Manage resources → Add resource
-
-URL: /local/todoist-project-card.js?v=1
-
-Type: JavaScript Module
+- **Settings** → **Dashboards** → **( ⋮ )** → **Manage resources** → **Add resource**
+- URL: `/local/todoist-project-card.js?v=1`
+- Type: `JavaScript Module`
 
 #### YAML mode:
 
