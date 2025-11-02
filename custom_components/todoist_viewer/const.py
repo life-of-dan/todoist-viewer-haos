@@ -1,0 +1,9 @@
+DOMAIN = "todoist_viewer"
+CONF_TOKEN = "token"
+CONF_PROJECT_ID = "project_id"
+CONF_PROJECT_NAME = "project_name"
+CONF_UPDATE_INTERVAL = "update_interval"
+DEFAULT_UPDATE_INTERVAL = 3600  # seconds
+PLATFORMS = ["sensor"]
+ATTR_TASKS = "tasks"
+ATTR_SECTIONS = "sections"

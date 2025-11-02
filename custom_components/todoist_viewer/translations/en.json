@@ -1,0 +1,21 @@
+{
+  "config": {
+    "error": {
+      "project_required": "Provide a Project ID or Project Name."
+    },
+    "step": {
+      "user": {
+        "title": "Todoist Viewer",
+        "description": "Display a Todoist project (read-only)."
+      }
+    },
+    "options": {
+      "step": {
+        "init": {
+          "title": "Options",
+          "description": "Polling interval in seconds."
+        }
+      }
+    }
+  }
+}
