@@ -35,6 +35,7 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+TASK_URL_BASE = "https://app.todoist.com/app/task/"
 
 
 class TodoistDueData(TypedDict, total=False):
@@ -175,12 +176,14 @@ class TodoistCoordinator(DataUpdateCoordinator[TodoistCoordinatorData]):
             str(section["id"]): {
                 "id": str(section["id"]),
                 "name": str(section.get("name", "")),
-                "order": int(section.get("order", 0)),
+                "order": int(
+                    section.get("section_order", section.get("order", 0))
+                ),
             }
             for section in sorted(
                 sections,
                 key=lambda value: (
-                    int(value.get("order", 0)),
+                    int(value.get("section_order", value.get("order", 0))),
                     str(value.get("id", "")),
                 ),
             )
@@ -194,7 +197,10 @@ class TodoistCoordinator(DataUpdateCoordinator[TodoistCoordinatorData]):
                     "content": str(task.get("content", "")),
                     "description": str(task.get("description", "")),
                     "completed": bool(
-                        task.get("is_completed", False) or task.get("completed", False)
+                        task.get(
+                            "checked",
+                            task.get("is_completed", task.get("completed", False)),
+                        )
                     ),
                     "priority": int(task.get("priority", 1)),
                     "labels": [str(label) for label in task.get("labels", [])],
@@ -202,8 +208,8 @@ class TodoistCoordinator(DataUpdateCoordinator[TodoistCoordinatorData]):
                     "section_id": _string_or_none(task.get("section_id")),
                     "project_id": _string_or_none(task.get("project_id")),
                     "due": _normalize_due(task.get("due")),
-                    "order": int(task.get("order", 0)),
-                    "url": str(task.get("url", "")),
+                    "order": int(task.get("child_order", task.get("order", 0))),
+                    "url": _task_url(task),
                 }
                 for task in tasks
                 if task.get("id") is not None
@@ -263,3 +269,15 @@ def _normalize_due(value: Any) -> TodoistDueData | None:
             normalized[key] = str(item)
 
     return normalized or None
+
+
+def _task_url(task: dict[str, Any]) -> str:
+    """Return a stable Todoist task URL for the public sensor payload."""
+    if task.get("url") not in (None, ""):
+        return str(task["url"])
+
+    task_id = task.get("id")
+    if task_id in (None, ""):
+        return ""
+
+    return f"{TASK_URL_BASE}{task_id}"

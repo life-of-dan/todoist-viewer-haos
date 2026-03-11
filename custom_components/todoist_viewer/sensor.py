@@ -59,5 +59,5 @@ class TodoistTasksSensor(CoordinatorEntity[TodoistCoordinator], SensorEntity):
             identifiers={(DOMAIN, self._entry.entry_id)},
             name=self._entry.title,
             manufacturer="Todoist",
-            model="REST API v2",
+            model="Todoist API v1",
         )

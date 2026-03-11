@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
 from .const import CARD_RESOURCE_PATH, CARD_URL_PATH, DOMAIN, PLATFORMS
-from .coordinator import TodoistConfigEntry
+from .coordinator import TodoistConfigEntry, TodoistCoordinator
 
 STATIC_PATH_REGISTERED = f"{DOMAIN}_static_path_registered"
 

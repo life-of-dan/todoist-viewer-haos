@@ -4,7 +4,7 @@ Todoist Viewer is a read-only Home Assistant custom integration that exposes one
 
 ## Features
 
-- Fetches active tasks from a selected Todoist project through the Todoist REST API v2.
+- Fetches active tasks from a selected Todoist project through the current Todoist API.
 - Preserves sections and parent/subtask hierarchy.
 - Exposes a sensor with normalized `tasks` and `sections` attributes for dashboards.
 - Bundles the Lovelace card inside the integration, so HACS upgrades keep the backend and frontend together.
@@ -49,7 +49,7 @@ Then restart Home Assistant.
    - either `Project ID` or `Project name`
 5. Finish the flow.
 
-The integration stores the resolved Todoist project ID and project name automatically. The update interval can be changed later in the integration options.
+The integration stores the resolved Todoist project ID and project name automatically. `Project ID` can be a current Todoist string ID or a legacy numeric project ID. The update interval can be changed later in the integration options.
 
 ## Add the Lovelace card
 
@@ -94,21 +94,21 @@ Example task payload:
 
 ```json
 {
-  "id": "123456789",
+  "id": "6XR4GqQQCW6Gv9h4",
   "content": "Task title",
   "description": "Optional description",
   "completed": false,
   "priority": 1,
   "labels": ["home", "urgent"],
   "parent_id": null,
-  "section_id": "987654321",
-  "project_id": "111222333",
+  "section_id": "6fFPHV272WWh3gpW",
+  "project_id": "6XGgm6PHrGgMpCFX",
   "due": {
     "string": "tomorrow 17:00",
     "date": "2026-03-11"
   },
   "order": 1,
-  "url": "https://todoist.com/showTask?id=123456789"
+  "url": "https://app.todoist.com/app/task/6XR4GqQQCW6Gv9h4"
 }
 ```
 
@@ -145,6 +145,12 @@ Example task payload:
 - The Todoist `/tasks` endpoint returns active tasks only.
 - Confirm the selected project ID or project name.
 - Check **Settings** -> **System** -> **Logs** for Todoist API errors.
+
+### `Todoist API request failed with status 410`
+
+- Update to version `0.2.1` or newer through HACS.
+- Restart Home Assistant after the upgrade.
+- Reopen the integration setup flow if you were blocked during initial configuration.
 
 ## Security and privacy
 
