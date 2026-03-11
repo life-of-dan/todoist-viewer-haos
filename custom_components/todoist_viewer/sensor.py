@@ -7,7 +7,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import ATTR_SECTIONS, ATTR_TASKS, DOMAIN
+from .const import ATTR_PROJECTS, ATTR_SECTIONS, ATTR_TASKS, DOMAIN
 from .coordinator import TodoistConfigEntry, TodoistCoordinator
 
 
@@ -21,7 +21,7 @@ async def async_setup_entry(
 
 
 class TodoistTasksSensor(CoordinatorEntity[TodoistCoordinator], SensorEntity):
-    """Expose the selected Todoist project as a Home Assistant sensor."""
+    """Expose Todoist tasks as a Home Assistant sensor."""
 
     _attr_has_entity_name = True
 
@@ -48,6 +48,7 @@ class TodoistTasksSensor(CoordinatorEntity[TodoistCoordinator], SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return task and section payloads for the frontend card."""
         return {
+            ATTR_PROJECTS: self.coordinator.data["projects"],
             ATTR_TASKS: self.coordinator.data["tasks"],
             ATTR_SECTIONS: self.coordinator.data["sections"],
         }

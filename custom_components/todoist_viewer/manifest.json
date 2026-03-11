@@ -1,7 +1,7 @@
 {
   "domain": "todoist_viewer",
   "name": "Todoist Viewer",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "documentation": "https://github.com/life-of-dan/todoist-viewer-haos#readme",
   "issue_tracker": "https://github.com/life-of-dan/todoist-viewer-haos/issues",
   "integration_type": "service",

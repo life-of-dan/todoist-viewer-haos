@@ -161,13 +161,15 @@ class TodoistApiClient:
         """Fetch all projects available to the user."""
         return await self._get_paginated("/projects")
 
-    async def list_sections(self, project_id: str) -> list[JsonObject]:
-        """Fetch all sections for a project."""
-        return await self._get_paginated("/sections", params={"project_id": project_id})
+    async def list_sections(self, project_id: str | None = None) -> list[JsonObject]:
+        """Fetch sections, optionally filtered to a project."""
+        params = {"project_id": project_id} if project_id else None
+        return await self._get_paginated("/sections", params=params)
 
-    async def list_tasks(self, project_id: str) -> list[JsonObject]:
-        """Fetch all active tasks for a project."""
-        return await self._get_paginated("/tasks", params={"project_id": project_id})
+    async def list_tasks(self, project_id: str | None = None) -> list[JsonObject]:
+        """Fetch active tasks, optionally filtered to a project."""
+        params = {"project_id": project_id} if project_id else None
+        return await self._get_paginated("/tasks", params=params)
 
     async def async_resolve_project(
         self, project_id: str | None, project_name: str | None

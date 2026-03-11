@@ -1,13 +1,14 @@
 # Todoist Viewer for Home Assistant
 
-Todoist Viewer is a read-only Home Assistant custom integration that exposes one Todoist project as a sensor and ships a matching Lovelace card. It is packaged so it can be installed and upgraded through HACS on Home Assistant OS.
+Todoist Viewer is a read-only Home Assistant custom integration that exposes either one Todoist project or every accessible project in a Todoist account as a sensor and ships a matching Lovelace card. It is packaged so it can be installed and upgraded through HACS on Home Assistant OS.
 
 ## Features
 
-- Fetches active tasks from a selected Todoist project through the current Todoist API.
+- Fetches active tasks from a selected Todoist project or from all accessible projects through the current Todoist API.
 - Preserves sections and parent/subtask hierarchy.
-- Exposes a sensor with normalized `tasks` and `sections` attributes for dashboards.
+- Exposes a sensor with normalized `projects`, `tasks`, and `sections` attributes for dashboards.
 - Bundles the Lovelace card inside the integration, so HACS upgrades keep the backend and frontend together.
+- Ships a Lovelace visual editor with a Todoist sensor dropdown, a show-completed toggle, and project selection when the sensor exposes multiple projects.
 - Supports config flow, options flow, reauth, reconfigure, diagnostics, and clean unloads.
 
 ## Requirements
@@ -46,22 +47,22 @@ Then restart Home Assistant.
 3. Search for `Todoist Viewer`.
 4. Enter:
    - `API token`
-   - either `Project ID` or `Project name`
+   - either `Project ID`, `Project name`, or enable `All projects`
 5. Finish the flow.
 
-The integration stores the resolved Todoist project ID and project name automatically. `Project ID` can be a current Todoist string ID or a legacy numeric project ID. The update interval can be changed later in the integration options.
+The integration stores the resolved Todoist project ID and project name automatically for single-project entries. `Project ID` can be a current Todoist string ID or a legacy numeric project ID. If `All projects` is enabled, one sensor will expose every accessible Todoist project and the card can filter that sensor per project. The update interval can be changed later in the integration options.
 
 ## Add the Lovelace card
 
 The custom card is served by the integration itself from:
 
-`/api/todoist_viewer/todoist-project-card.js?v=1`
+`/api/todoist_viewer/todoist-project-card.js?v=2`
 
 ### Storage mode
 
 1. Go to **Settings** -> **Dashboards** -> **Resources**.
 2. Add a new resource:
-   - URL: `/api/todoist_viewer/todoist-project-card.js?v=1`
+   - URL: `/api/todoist_viewer/todoist-project-card.js?v=2`
    - Type: `JavaScript Module`
 
 ### YAML mode
@@ -70,9 +71,17 @@ The custom card is served by the integration itself from:
 lovelace:
   mode: yaml
   resources:
-    - url: /api/todoist_viewer/todoist-project-card.js?v=1
+    - url: /api/todoist_viewer/todoist-project-card.js?v=2
       type: module
 ```
+
+### Visual editor
+
+After the resource is loaded, add `Todoist Project Card` from the dashboard card picker. The visual editor lets you choose:
+
+- a Todoist Viewer sensor
+- whether completed tasks should be shown
+- a specific Todoist project when the selected sensor exposes multiple projects
 
 ### Example card
 
@@ -80,6 +89,8 @@ lovelace:
 type: custom:todoist-project-card
 entity: sensor.todoist_tasks
 show_completed: false
+# Optional when the selected sensor exposes multiple projects:
+# project_id: 6XGgm6PHrGgMpCFX
 ```
 
 ## Entity and payload
@@ -87,8 +98,21 @@ show_completed: false
 - `sensor.todoist_tasks`
   - state: number of active tasks
   - attributes:
+    - `projects`: project map keyed by project ID
     - `tasks`: normalized list of Todoist tasks
     - `sections`: section map keyed by section ID
+
+Example project payload:
+
+```json
+{
+  "6XGgm6PHrGgMpCFX": {
+    "id": "6XGgm6PHrGgMpCFX",
+    "name": "Home",
+    "order": 1
+  }
+}
+```
 
 Example task payload:
 
@@ -130,7 +154,7 @@ Example task payload:
 
 ### `Custom element doesn't exist: todoist-project-card`
 
-- Verify the resource URL is `/api/todoist_viewer/todoist-project-card.js`.
+- Verify the resource URL is `/api/todoist_viewer/todoist-project-card.js?v=2`.
 - Hard-refresh the browser.
 - Confirm the integration is installed and loaded.
 
@@ -143,12 +167,13 @@ Example task payload:
 ### No tasks appear
 
 - The Todoist `/tasks` endpoint returns active tasks only.
-- Confirm the selected project ID or project name.
+- Confirm the selected project ID or project name, or verify that `All projects` is enabled for the intended entry.
+- If the card is using an all-projects sensor, confirm the selected card project still exists in the entity `projects` attribute.
 - Check **Settings** -> **System** -> **Logs** for Todoist API errors.
 
 ### `Todoist API request failed with status 410`
 
-- Update to version `0.2.1` or newer through HACS.
+- Update to version `0.3.0` or newer through HACS.
 - Restart Home Assistant after the upgrade.
 - Reopen the integration setup flow if you were blocked during initial configuration.
 

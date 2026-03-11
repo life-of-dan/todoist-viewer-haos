@@ -26,10 +26,13 @@ from .api import (
     TodoistProjectNotFoundError,
 )
 from .const import (
+    ALL_PROJECTS_NAME,
     CONF_PROJECT_ID,
     CONF_PROJECT_NAME,
     CONF_TOKEN,
     CONF_UPDATE_INTERVAL,
+    ALL_PROJECTS_ID,
+    CONF_ALL_PROJECTS,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     MIN_UPDATE_INTERVAL,
@@ -90,6 +93,7 @@ class TodoistViewerConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None and self._reauth_entry_data is not None:
             merged_input = {
                 CONF_TOKEN: user_input[CONF_TOKEN],
+                CONF_ALL_PROJECTS: self._reauth_entry_data.get(CONF_ALL_PROJECTS, False),
                 CONF_PROJECT_ID: self._reauth_entry_data.get(CONF_PROJECT_ID, ""),
                 CONF_PROJECT_NAME: self._reauth_entry_data.get(CONF_PROJECT_NAME, ""),
             }
@@ -148,6 +152,7 @@ class TodoistViewerConfigFlow(ConfigFlow, domain=DOMAIN):
             data_schema=self.add_suggested_values_to_schema(
                 _project_schema(),
                 {
+                    CONF_ALL_PROJECTS: entry.data.get(CONF_ALL_PROJECTS, False),
                     CONF_PROJECT_ID: entry.data.get(CONF_PROJECT_ID, ""),
                     CONF_PROJECT_NAME: entry.data.get(CONF_PROJECT_NAME, ""),
                 },
@@ -181,15 +186,20 @@ class TodoistViewerConfigFlow(ConfigFlow, domain=DOMAIN):
         self, token: str, user_input: dict[str, Any]
     ) -> tuple[dict[str, str], TodoistProject, dict[str, str]]:
         """Validate Todoist project selection."""
+        all_projects = bool(user_input.get(CONF_ALL_PROJECTS, False))
         project_id = str(user_input.get(CONF_PROJECT_ID, "") or "").strip()
         project_name = str(user_input.get(CONF_PROJECT_NAME, "") or "").strip()
 
-        if not project_id and not project_name:
-            return {"base": "project_required"}, TodoistProject("", ""), {}
-
         api = TodoistApiClient(async_get_clientsession(self.hass), token)
         try:
-            project = await api.async_resolve_project(project_id, project_name)
+            if all_projects:
+                await api.list_projects()
+                project = TodoistProject(ALL_PROJECTS_ID, ALL_PROJECTS_NAME)
+            else:
+                if not project_id and not project_name:
+                    return {"base": "project_required"}, TodoistProject("", ""), {}
+
+                project = await api.async_resolve_project(project_id, project_name)
         except TodoistAuthenticationError:
             return {"base": "invalid_auth"}, TodoistProject("", ""), {}
         except TodoistConnectionError:
@@ -206,8 +216,9 @@ class TodoistViewerConfigFlow(ConfigFlow, domain=DOMAIN):
             {},
             project,
             {
-                CONF_PROJECT_ID: project.id,
-                CONF_PROJECT_NAME: project.name,
+                CONF_ALL_PROJECTS: all_projects,
+                CONF_PROJECT_ID: "" if all_projects else project.id,
+                CONF_PROJECT_NAME: "" if all_projects else project.name,
             },
         )
 
@@ -268,6 +279,7 @@ def _project_schema() -> vol.Schema:
     """Build the project-selection schema."""
     return vol.Schema(
         {
+            vol.Required(CONF_ALL_PROJECTS, default=False): selector.BooleanSelector(),
             vol.Optional(CONF_PROJECT_ID): selector.TextSelector(),
             vol.Optional(CONF_PROJECT_NAME): selector.TextSelector(),
         }

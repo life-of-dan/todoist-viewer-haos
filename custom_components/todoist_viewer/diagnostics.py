@@ -5,7 +5,7 @@ from typing import Any
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
-from .const import ATTR_SECTIONS, ATTR_TASKS, REDACT_CONFIG
+from .const import ATTR_PROJECTS, ATTR_SECTIONS, ATTR_TASKS, REDACT_CONFIG
 from .coordinator import TodoistConfigEntry
 
 
@@ -15,6 +15,7 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     coordinator = config_entry.runtime_data
+    project_payload = coordinator.data.get(ATTR_PROJECTS, {})
     task_payload = coordinator.data.get(ATTR_TASKS, [])
     section_payload = coordinator.data.get(ATTR_SECTIONS, {})
 
@@ -25,6 +26,7 @@ async def async_get_config_entry_diagnostics(
             "name": coordinator.project.name if coordinator.project else None,
         },
         "summary": {
+            "project_count": len(project_payload),
             "section_count": len(section_payload),
             "task_count": len(task_payload),
             "active_task_count": sum(
@@ -47,5 +49,6 @@ async def async_get_config_entry_diagnostics(
             }
             for task in task_payload
         ],
+        "projects": project_payload,
         "sections": section_payload,
     }
