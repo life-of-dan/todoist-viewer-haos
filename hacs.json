@@ -1,0 +1,8 @@
+{
+  "name": "Todoist Viewer",
+  "render_readme": true,
+  "domains": [
+    "todoist_viewer"
+  ],
+  "homeassistant": "2026.3.0"
+}

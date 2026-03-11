@@ -1,21 +1,74 @@
 {
   "config": {
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
+    },
     "error": {
-      "project_required": "Provide a Project ID or Project Name."
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "invalid_auth": "[%key:component::todoist_viewer::exceptions::invalid_auth::message%]",
+      "project_name_ambiguous": "[%key:component::todoist_viewer::exceptions::project_name_ambiguous::message%]",
+      "project_not_found": "[%key:component::todoist_viewer::exceptions::project_not_found::message%]",
+      "project_required": "Provide a Project ID or Project Name.",
+      "unknown": "[%key:common::config_flow::error::unknown%]"
     },
     "step": {
+      "reauth_confirm": {
+        "data": {
+          "token": "API token"
+        },
+        "description": "Update the Todoist API token for {project_name}.",
+        "title": "Reconnect Todoist"
+      },
+      "reconfigure": {
+        "data": {
+          "project_id": "Project ID",
+          "project_name": "Project name"
+        },
+        "description": "Update which Todoist project this integration tracks.",
+        "title": "Reconfigure Todoist Viewer"
+      },
       "user": {
-        "title": "Todoist Viewer",
-        "description": "Display a Todoist project (read-only)."
-      }
-    },
-    "options": {
-      "step": {
-        "init": {
-          "title": "Options",
-          "description": "Polling interval in seconds."
-        }
+        "data": {
+          "project_id": "Project ID",
+          "project_name": "Project name",
+          "token": "API token"
+        },
+        "data_description": {
+          "project_id": "Todoist project ID. This is the most reliable way to select a project.",
+          "project_name": "Optional alternative to Project ID. Exact project-name matches work best.",
+          "token": "Create a Todoist API token in Todoist Settings > Integrations > Developer."
+        },
+        "description": "Connect Todoist and choose one project to expose as a read-only Home Assistant sensor.",
+        "title": "Todoist Viewer"
       }
     }
-  }
+  },
+  "exceptions": {
+    "invalid_auth": {
+      "message": "The Todoist API token is invalid or has expired."
+    },
+    "project_name_ambiguous": {
+      "message": "More than one Todoist project matches \"{project_name}\"."
+    },
+    "project_not_found": {
+      "message": "The configured Todoist project could not be found."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "update_interval": "Update interval"
+        },
+        "data_description": {
+          "update_interval": "Polling interval in seconds. Lower values increase Todoist API usage."
+        },
+        "description": "Adjust how often Todoist Viewer refreshes data from Todoist.",
+        "title": "Options"
+      }
+    }
+  },
+  "title": "Todoist Viewer"
 }

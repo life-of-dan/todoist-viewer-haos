@@ -1,83 +1,80 @@
-# Todoist Viewer (Read-Only) for Home Assistant
+# Todoist Viewer for Home Assistant
 
-Display a single Todoist project (including sections and subtasks) inside Home Assistant with a Todoist-like UI.
-This integration is read-only and polls roughly hourly by default.
+Todoist Viewer is a read-only Home Assistant custom integration that exposes one Todoist project as a sensor and ships a matching Lovelace card. It is packaged so it can be installed and upgraded through HACS on Home Assistant OS.
 
 ## Features
 
-- Fetches active tasks from a chosen Todoist project via REST v2.
-- Preserves hierarchy (parent → subtasks) and groups by sections.
-- Shows priority, labels, and due string.
-- Exposes a sensor with the full task payload for a custom Lovelace card to render.
+- Fetches active tasks from a selected Todoist project through the Todoist REST API v2.
+- Preserves sections and parent/subtask hierarchy.
+- Exposes a sensor with normalized `tasks` and `sections` attributes for dashboards.
+- Bundles the Lovelace card inside the integration, so HACS upgrades keep the backend and frontend together.
+- Supports config flow, options flow, reauth, reconfigure, diagnostics, and clean unloads.
 
 ## Requirements
 
-- Home Assistant (2023.12+ recommended)
+- Home Assistant OS / Home Assistant Core `2026.3.0` or newer
+- Internet access from your Home Assistant host
 - A Todoist API token
-- Internet connectivity from your HA host
 
-Get your Todoist API token from Todoist → `Settings` → `Integrations` → `Developer` → `“API token”`.
+Get your Todoist API token from Todoist: `Settings` -> `Integrations` -> `Developer` -> `API token`.
 
-## Installation
+## Install with HACS
 
-### 1. Copy the files
+1. Open HACS in Home Assistant.
+2. Add this repository as a custom repository:
+   - URL: `https://github.com/life-of-dan/todoist-viewer-haos`
+   - Category: `Integration`
+3. Install `Todoist Viewer`.
+4. Restart Home Assistant.
 
-Place these exactly under your Home Assistant config directory:
+## Manual installation
+
+Copy `custom_components/todoist_viewer` into your Home Assistant config directory:
 
 ```txt
 config/
-├─ custom_components/
-│  └─ todoist_viewer/
-│     ├─ __init__.py
-│     ├─ manifest.json
-│     ├─ const.py
-│     ├─ api.py
-│     ├─ coordinator.py
-│     ├─ sensor.py
-│     └─ config_flow.py
-└─ www/
-   └─ todoist-project-card.js
+└─ custom_components/
+   └─ todoist_viewer/
 ```
 
-> If `www/` doesn’t exist, create it.
+Then restart Home Assistant.
 
-### 2. Restart Home Assistant
+## Set up the integration
 
-A full restart is required for Home Assistant to register the new integration and frontend resource.
+1. Go to **Settings** -> **Devices & Services**.
+2. Select **Add Integration**.
+3. Search for `Todoist Viewer`.
+4. Enter:
+   - `API token`
+   - either `Project ID` or `Project name`
+5. Finish the flow.
 
-### 3. Add the integration (UI)
+The integration stores the resolved Todoist project ID and project name automatically. The update interval can be changed later in the integration options.
 
-- Go to **Settings** → **Devices & Services** → **Add Integration**.
-- Search for **Todoist Viewer (Read-Only)**.
-- Enter:
-  - API token
-  - Either Project ID or Project Name (ID is most reliable)
-- Finish the flow.
-  - You can change the refresh interval later in the integration Options (default: 3600 seconds).
+## Add the Lovelace card
 
-### 4. Add the Lovelace resource
+The custom card is served by the integration itself from:
 
-Depending on dashboard mode:
+`/api/todoist_viewer/todoist-project-card.js?v=1`
 
-**Storage mode (default):**
+### Storage mode
 
-- **Settings** → **Dashboards** → **( ⋮ )** → **Manage resources** → **Add resource**
-- URL: `/local/todoist-project-card.js?v=1`
-- Type: `JavaScript Module`
+1. Go to **Settings** -> **Dashboards** -> **Resources**.
+2. Add a new resource:
+   - URL: `/api/todoist_viewer/todoist-project-card.js?v=1`
+   - Type: `JavaScript Module`
 
-#### YAML mode:
+### YAML mode
 
 ```yaml
 lovelace:
   mode: yaml
   resources:
-    - url: /local/todoist-project-card.js?v=1
+    - url: /api/todoist_viewer/todoist-project-card.js?v=1
       type: module
 ```
 
-### 5. Add the card to a view
-
-Create a manual card with:
+### Example card
 
 ```yaml
 type: custom:todoist-project-card
@@ -85,15 +82,15 @@ entity: sensor.todoist_tasks
 show_completed: false
 ```
 
-## Entities & Data Model
+## Entity and payload
 
 - `sensor.todoist_tasks`
-  - state: number of active (incomplete) tasks
+  - state: number of active tasks
   - attributes:
-    - `tasks`: array of normalized task objects
-    - `sections`: map of section id → { id, name, order }
+    - `tasks`: normalized list of Todoist tasks
+    - `sections`: section map keyed by section ID
 
-Each task contains:
+Example task payload:
 
 ```json
 {
@@ -106,58 +103,55 @@ Each task contains:
   "parent_id": null,
   "section_id": "987654321",
   "project_id": "111222333",
-  "due": { "string": "tomorrow 17:00", "date": "2025-11-03" },
+  "due": {
+    "string": "tomorrow 17:00",
+    "date": "2026-03-11"
+  },
   "order": 1,
-  "url": "https://todoist.com/showTask?id=..."
+  "url": "https://todoist.com/showTask?id=123456789"
 }
 ```
 
-## Troubleshooting
-
-“Custom element doesn’t exist: todoist-project-card.”
-
-- Ensure the file name is exactly todoist-project-card.js in config/www/.
-- Confirm the resource URL is `/local/todoist-project-card.js` (with a cache-buster like ?v=2).
-- Hard-refresh the dashboard (Shift + Reload).
-- In the browser console, check:
-  - `customElements.get('todoist-project-card')` → should return a function.
-  - No red syntax errors for `/local/todoist-project-card.js`.
-
-“Config flow could not be loaded: Invalid handler specified.”
-
-- Verify the folder path and domain name match exactly:
-`config/custom_components/todoist_viewer/`
-- Ensure `config_flow.py` exists and `manifest.json` has `"config_flow": true`.
-- Restart Home Assistant after copying files.
-- Remove any stale copies / `__pycache__` and copy cleanly.
-
-No tasks show up
-
-- The Todoist /tasks REST endpoint returns active tasks only. Completed tasks aren’t included.
-- Confirm the correct Project ID/Name.
-- Check Settings → System → Logs for any Todoist API errors.
-
 ## Updating
 
-- Replace the files in custom_components/todoist_viewer/ and www/todoist-project-card.js.
-- Bump the resource cache buster in your resource URL (e.g., ?v=3).
+### HACS
+
+- Update the integration through HACS.
 - Restart Home Assistant.
+- Refresh the browser once if the custom card resource was cached.
 
-## Uninstalling
+### Manual
 
-- Settings → Devices & Services → Remove Todoist Viewer.
-- Delete config/custom_components/todoist_viewer/.
-- Remove the /local/todoist-project-card.js resource from Dashboard Resources.
+- Replace `custom_components/todoist_viewer/`.
 - Restart Home Assistant.
+- Refresh the browser once if needed.
 
-## Configuration Options
+## Troubleshooting
 
-- Update interval (seconds): default 3600 (1 hour). Adjust via the integration’s Options.
+### `Custom element doesn't exist: todoist-project-card`
 
-## Security & Privacy
+- Verify the resource URL is `/api/todoist_viewer/todoist-project-card.js`.
+- Hard-refresh the browser.
+- Confirm the integration is installed and loaded.
 
-- The Todoist API token is stored by Home Assistant’s config entries system.
-- This integration is read-only and does not modify Todoist data.
-- Revoke or rotate your token from Todoist if needed, then update the integration config.
+### `Config flow could not be loaded: Invalid handler specified`
 
-License MIT
+- Verify the integration path is exactly `config/custom_components/todoist_viewer/`.
+- Confirm `manifest.json` contains `"config_flow": true`.
+- Restart Home Assistant after copying files manually.
+
+### No tasks appear
+
+- The Todoist `/tasks` endpoint returns active tasks only.
+- Confirm the selected project ID or project name.
+- Check **Settings** -> **System** -> **Logs** for Todoist API errors.
+
+## Security and privacy
+
+- The Todoist API token is stored in the Home Assistant config entry.
+- The integration is read-only and does not modify Todoist data.
+- Diagnostics redact the API token and avoid exposing task content or descriptions.
+
+## License
+
+MIT

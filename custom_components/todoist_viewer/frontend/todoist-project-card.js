@@ -1,21 +1,23 @@
 /**
- * Todoist Project Card (read-only) — fixed build
- * File name should be: /local/todoist-project-card.js
- * Usage:
- *   type: custom:todoist-project-card
- *   entity: sensor.todoist_tasks
- *   show_completed: false
+ * Todoist Project Card
+ * Resource URL: /api/todoist_viewer/todoist-project-card.js
  */
 class TodoistProjectCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
-    if (!this._config || !this._config.entity) return;
+    if (!this._config?.entity) {
+      return;
+    }
+
     this._state = hass.states[this._config.entity];
     this.render();
   }
 
   setConfig(config) {
-    if (!config.entity) throw new Error('entity is required');
+    if (!config.entity) {
+      throw new Error('entity is required');
+    }
+
     this._config = { show_completed: false, ...config };
     this.style.display = 'block';
     this.render();
@@ -26,7 +28,10 @@ class TodoistProjectCard extends HTMLElement {
   }
 
   render() {
-    if (!this._hass || !this._config) return;
+    if (!this._hass || !this._config) {
+      return;
+    }
+
     const state = this._state;
     if (!state) {
       this.innerHTML =
@@ -36,119 +41,143 @@ class TodoistProjectCard extends HTMLElement {
       return;
     }
 
-    const attrs = state.attributes || {};
-    const tasks = (attrs.tasks || [])
-      .slice()
-      .sort((a, b) => (a.order || 0) - (b.order || 0));
-    const sections = attrs.sections || {};
+    const attributes = state.attributes || {};
+    const tasks = (attributes.tasks || [])
+      .map((task) => ({ ...task, children: [] }))
+      .sort((left, right) => (left.order || 0) - (right.order || 0));
+    const sections = attributes.sections || {};
 
-    // Build hierarchy
     const byId = new Map();
-    for (const t of tasks) {
-      t.children = [];
-      byId.set(t.id, t);
+    for (const task of tasks) {
+      byId.set(task.id, task);
     }
+
     const roots = [];
-    for (const t of tasks) {
-      if (t.parent_id && byId.has(t.parent_id))
-        byId.get(t.parent_id).children.push(t);
-      else roots.push(t);
+    for (const task of tasks) {
+      if (task.parent_id && byId.has(task.parent_id)) {
+        byId.get(task.parent_id).children.push(task);
+      } else {
+        roots.push(task);
+      }
     }
 
-    // Group roots by section
+    for (const task of tasks) {
+      task.children.sort((left, right) => (left.order || 0) - (right.order || 0));
+    }
+
     const sectionGroups = {};
-    for (const t of roots) {
-      const sid = t.section_id || 'none';
-      if (!sectionGroups[sid]) sectionGroups[sid] = [];
-      sectionGroups[sid].push(t);
+    for (const task of roots) {
+      const sectionId = task.section_id || 'none';
+      if (!sectionGroups[sectionId]) {
+        sectionGroups[sectionId] = [];
+      }
+      sectionGroups[sectionId].push(task);
     }
 
-    const showCompleted = !!this._config.show_completed;
+    const showCompleted = Boolean(this._config.show_completed);
 
-    const escape = (str) =>
-      String(str ?? '').replace(
+    const escape = (value) =>
+      String(value ?? '').replace(
         /[&<>"']/g,
-        (m) =>
+        (match) =>
           ({
             '&': '&amp;',
             '<': '&lt;',
             '>': '&gt;',
             '"': '&quot;',
             "'": '&#39;',
-          }[m])
+          })[match]
       );
 
     const renderLabels = (labels) => {
-      if (!labels || !labels.length) return '';
-      let html = '';
-      for (const l of labels)
-        html += '<span class="label">#' + escape(l) + '</span>';
-      return html;
+      if (!labels?.length) {
+        return '';
+      }
+
+      return labels
+        .map((label) => '<span class="label">#' + escape(label) + '</span>')
+        .join('');
     };
 
     const renderDue = (due) => {
-      if (!due) return '';
-      const s = due.string || due.date || due.datetime || '';
-      return '<span class="due">' + escape(s) + '</span>';
+      if (!due) {
+        return '';
+      }
+
+      const dueString = due.string || due.date || due.datetime || '';
+      return '<span class="due">' + escape(dueString) + '</span>';
     };
 
-    const renderTask = (t, depth) => {
-      if (!showCompleted && t.completed) return '';
-      const pClass = 'p' + (t.priority || 1);
+    const renderTask = (task, depth) => {
+      if (!showCompleted && task.completed) {
+        return '';
+      }
+
       let html = '';
       html +=
         '<div class="task depth-' +
         depth +
-        (t.completed ? ' completed' : '') +
+        (task.completed ? ' completed' : '') +
         '">';
-      html += '  <div class="bullet ' + pClass + '"></div>';
+      html += '  <div class="bullet p' + (task.priority || 1) + '"></div>';
       html += '  <div class="content">';
       html += '    <div class="line">';
-      html += '      <span class="text">' + escape(t.content || '') + '</span>';
-      html += renderLabels(t.labels);
-      html += renderDue(t.due);
+      html += '      <span class="text">' + escape(task.content || '') + '</span>';
+      html += renderLabels(task.labels);
+      html += renderDue(task.due);
       html += '    </div>';
-      if (t.description)
-        html += '    <div class="desc">' + escape(t.description) + '</div>';
+
+      if (task.description) {
+        html += '    <div class="desc">' + escape(task.description) + '</div>';
+      }
+
       html += '  </div>';
       html += '</div>';
-      if (t.children && t.children.length) {
+
+      if (task.children?.length) {
         html += '<div class="children">';
-        for (const c of t.children) html += renderTask(c, depth + 1);
+        for (const child of task.children) {
+          html += renderTask(child, depth + 1);
+        }
         html += '</div>';
       }
+
       return html;
     };
 
-    // Order sections
     const sectionOrder = Object.values(sections)
-      .sort((a, b) => (a.order || 0) - (b.order || 0))
-      .map((s) => s.id);
-    const keys = Array.from(
+      .sort((left, right) => (left.order || 0) - (right.order || 0))
+      .map((section) => section.id);
+    const sectionKeys = Array.from(
       new Set(sectionOrder.concat(Object.keys(sectionGroups)))
     );
 
-    // Build sections HTML first (avoid nested template literals)
     let sectionsHtml = '';
-    for (const sid of keys) {
-      const arr = sectionGroups[sid] || [];
-      let items = '';
-      for (const t of arr) items += renderTask(t, 0);
-      if (!items) continue;
-      const sObj = sections[sid];
+    for (const sectionId of sectionKeys) {
+      const sectionTasks = sectionGroups[sectionId] || [];
+      const items = sectionTasks.map((task) => renderTask(task, 0)).join('');
+      if (!items) {
+        continue;
+      }
+
+      const section = sections[sectionId];
       const title =
-        sObj && sObj.name ? sObj.name : sid === 'none' ? '' : 'Section';
+        section?.name ? section.name : sectionId === 'none' ? '' : 'Section';
+
       sectionsHtml += '<div class="section">';
-      if (title)
+      if (title) {
         sectionsHtml +=
           '<div class="section-title">' +
           escape(title) +
           '<hr class="separator"></div>';
-      sectionsHtml += items + '</div>';
+      }
+      sectionsHtml += items;
+      sectionsHtml += '</div>';
     }
 
     const emptyHtml =
-      !tasks || tasks.length === 0 ? '<div class="empty">No tasks</div>' : '';
+      tasks.length === 0 ? '<div class="empty">No tasks</div>' : '';
+
     this.innerHTML = `
       <ha-card>
         <div class="wrap">
@@ -160,7 +189,7 @@ class TodoistProjectCard extends HTMLElement {
         .wrap{ padding: 12px 16px 16px; }
         .separator { width: 100%; overflow: visible; height: 0; margin-inline-start: 10px; border: 0.5px solid var(--primary-text-color); margin-block-start: auto; margin-block-end: auto; }
         .section{ margin-bottom: 12px; }
-        .section-title{ font-weight:600; opacity:.8; margin:8px 0 6px; text-transform:uppercase; font-size:.72rem; letter-spacing:.04em; display: flex; flex-direction: row; }
+        .section-title{ font-weight:600; opacity:.8; margin:8px 0 6px; text-transform:uppercase; font-size:.72rem; letter-spacing:.04em; display:flex; flex-direction:row; }
         .task{ display:grid; grid-template-columns:16px 1fr; gap:10px; align-items:start; margin:6px 0; }
         .task .bullet{ margin-top:20%; width:12px; height:12px; border-radius:50%; border:2px solid var(--divider-color); }
         .task .bullet.p4{ border-color:#db4c3f; } .task .bullet.p3{ border-color:#eb8909; } .task .bullet.p2{ border-color:#246fe0; } .task .bullet.p1{ border-color:var(--divider-color); }
@@ -169,7 +198,6 @@ class TodoistProjectCard extends HTMLElement {
         .task .text{ font-size:1rem; font-weight:500; }
         .task .desc{ font-size:.9rem; opacity:.8; margin-top:2px; }
         .due{ font-size:.78rem; padding:2px 6px; border-radius:10px; background:var(--ha-card-background); border:1px solid var(--divider-color); opacity:.8; }
-        .labels{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
         .label{ font-size:.72rem; padding:2px 6px; border-radius:6px; background:rgba(127,127,127,.15); border:1px solid var(--divider-color); }
         .children{ margin-left:18px; border-left:1px dashed var(--divider-color); padding-left:12px; }
         .empty{ padding:16px; opacity:.7; }
@@ -181,10 +209,10 @@ class TodoistProjectCard extends HTMLElement {
 if (!customElements.get('todoist-project-card')) {
   customElements.define('todoist-project-card', TodoistProjectCard);
 }
+
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'todoist-project-card',
   name: 'Todoist Project Card',
-  description:
-    'Read-only card for displaying Todoist project tasks (with subtasks).',
+  description: 'Read-only card for displaying Todoist project tasks and subtasks.',
 });

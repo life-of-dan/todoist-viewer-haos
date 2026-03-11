@@ -1,28 +1,42 @@
 from __future__ import annotations
 
-import logging
+from pathlib import Path
+
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
-from .const import DOMAIN
-from .coordinator import TodoistCoordinator
+from homeassistant.helpers.typing import ConfigType
 
-_LOGGER = logging.getLogger(__name__)
+from .const import CARD_RESOURCE_PATH, CARD_URL_PATH, DOMAIN, PLATFORMS
+from .coordinator import TodoistConfigEntry
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    coordinator = TodoistCoordinator(hass, entry)
-    await coordinator.async_config_entry_first_refresh()
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
-    await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR])
-    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+STATIC_PATH_REGISTERED = f"{DOMAIN}_static_path_registered"
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up the Todoist Viewer integration."""
+    if not hass.data.get(STATIC_PATH_REGISTERED):
+        await hass.http.async_register_static_paths(
+            [
+                StaticPathConfig(
+                    CARD_URL_PATH,
+                    str(Path(__file__).parent / CARD_RESOURCE_PATH),
+                )
+            ]
+        )
+        hass.data[STATIC_PATH_REGISTERED] = True
+
     return True
 
-async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    coordinator: TodoistCoordinator = hass.data[DOMAIN][entry.entry_id]
-    await coordinator.async_request_refresh()
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    unloaded = await hass.config_entries.async_unload_platforms(entry, [Platform.SENSOR])
-    if unloaded:
-        hass.data[DOMAIN].pop(entry.entry_id, None)
-    return unloaded
+async def async_setup_entry(hass: HomeAssistant, entry: TodoistConfigEntry) -> bool:
+    """Set up Todoist Viewer from a config entry."""
+    coordinator = TodoistCoordinator(hass, entry)
+    await coordinator.async_config_entry_first_refresh()
+    entry.runtime_data = coordinator
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: TodoistConfigEntry) -> bool:
+    """Unload a Todoist Viewer config entry."""
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
